@@ -64,6 +64,11 @@ struct sitl_fdm {
     double latitude, longitude; // degrees
     double altitude;  // MSL
     double heading;   // degrees
+
+    double crosshair_x;  // позиция X (0-1)
+    double crosshair_y;  // позиция Y (0-1)
+    uint64_t timestamp_ms; // timestamp_us
+
     double speedN, speedE, speedD; // m/s
     double xAccel, yAccel, zAccel;       // m/s/s in body frame
     double rollRate, pitchRate, yawRate; // degrees/s in body frame

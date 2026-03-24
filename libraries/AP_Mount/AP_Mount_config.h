@@ -35,7 +35,7 @@
 
 // solo gimbal is enabled explicitly in hwdefs on some Cubes:
 #ifndef HAL_SOLO_GIMBAL_ENABLED
-#define HAL_SOLO_GIMBAL_ENABLED 0
+#define HAL_SOLO_GIMBAL_ENABLED 1
 #endif
 
 #ifndef HAL_MOUNT_STORM32MAVLINK_ENABLED

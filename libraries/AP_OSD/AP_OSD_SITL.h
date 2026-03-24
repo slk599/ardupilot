@@ -23,7 +23,10 @@
 #include <SFML/Graphics.h>
 #else
 #include <SFML/Graphics.hpp>
+#include <SFML/Graphics/VertexArray.hpp>
 #endif
+
+#include <ctime>
 
 class AP_OSD_SITL : public AP_OSD_Backend
 {
@@ -89,11 +92,19 @@ private:
     void update_thread();
     static void *update_thread_start(void *obj);
     void load_font();
+    
+    // Overlay drawing functions
+    void draw_crosshair(sf::RenderWindow *w);
+    void draw_timestamp(sf::RenderWindow *w, sf::Font &ts_font);
 
     pthread_t thread;
     HAL_Semaphore mutex;
     uint32_t counter;
     uint32_t last_counter;
+    
+    // Timestamp font
+    sf::Font _ts_font;
+    bool _ts_font_loaded = false;
 };
 
 #endif // WITH_SITL_OSD

@@ -52,12 +52,25 @@ void SoloGimbal::receive_feedback(mavlink_channel_t chan, const mavlink_message_
 
     _gimbalParams.set_channel(chan);
 
+    hal.console->printf("SoloGimbal: received GIMBAL_REPORT message, target_system=%u\n", report_msg.target_system);
+    hal.console->printf("SoloGimbal: osd_timestamp=%llu, osd_x=%.2f, osd_y=%.2f\n", 
+        (unsigned long long)report_msg.osd_timestamp,
+        (double)report_msg.osd_x,
+        (double)report_msg.osd_y);
+
+    SITL::SIM *sitl = AP::sitl();
+    if (sitl) 
+    {
+        sitl->state.crosshair_x = (double)report_msg.osd_x;
+        sitl->state.crosshair_y = (double)report_msg.osd_y;
+        sitl->state.timestamp_ms = (unsigned long long)report_msg.osd_timestamp;
+    }
+
     if (report_msg.target_system != 1) {
         _state = GIMBAL_STATE_NOT_PRESENT;
     } else {
         GCS_MAVLINK::set_channel_private(chan);
     }
-
     switch(_state) {
         case GIMBAL_STATE_NOT_PRESENT:
             // gimbal was just connected or we just rebooted, transition to PRESENT_INITIALIZING

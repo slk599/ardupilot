@@ -119,10 +119,107 @@ void AP_OSD_SITL::flush(void)
     counter++;
 }
 
+void AP_OSD_SITL::draw_crosshair(sf::RenderWindow *window)
+{
+    const auto *sitl = AP::sitl();
+    if (!sitl)
+        return; 
+    
+    double crosshair_x = sitl->state.crosshair_x;
+    double crosshair_y = sitl->state.crosshair_y;
+    
+    if (fabsf(crosshair_x) < 0.001f && fabsf(crosshair_y) < 0.001f) 
+    {
+        crosshair_x = 0.5f;
+        crosshair_y = 0.5f;
+    }
+    
+    sf::Vector2u window_size = window->getSize();
+    float cx = window_size.x * crosshair_x;
+    float cy = window_size.y * crosshair_y;
+    
+    // Размер перекрестия относительно размера окна
+    float len = std::min(window_size.x, window_size.y) / 25.0f; 
+    float gap = len / 4.0f;
+    
+    sf::Color col(255, 255, 255, 200);
+
+    sf::VertexArray lines(sf::Lines, 8);
+    // горизонталь левая
+    lines[0].position = {cx - gap - len, cy};  lines[0].color = col;
+    lines[1].position = {cx - gap,        cy};  lines[1].color = col;
+    // горизонталь правая
+    lines[2].position = {cx + gap,         cy};  lines[2].color = col;
+    lines[3].position = {cx + gap + len,   cy};  lines[3].color = col;
+    // вертикаль верхняя
+    lines[4].position = {cx, cy - gap - len};  lines[4].color = col;
+    lines[5].position = {cx, cy - gap       };  lines[5].color = col;
+    // вертикаль нижняя
+    lines[6].position = {cx, cy + gap       };  lines[6].color = col;
+    lines[7].position = {cx, cy + gap + len };  lines[7].color = col;
+    
+    window->draw(lines);
+}
+
+void AP_OSD_SITL::draw_timestamp(sf::RenderWindow *window, sf::Font &ts_font)
+{
+    char buf[64];
+
+    const auto *sitl = AP::sitl();
+    if (!sitl) 
+        return;
+    
+    uint64_t last_osd_timestamp = sitl->state.timestamp_ms;
+    
+    if (last_osd_timestamp != 0) 
+    {
+        time_t seconds = last_osd_timestamp / 1000;
+        uint32_t milliseconds = last_osd_timestamp % 1000;
+        
+        struct tm* tm_info = localtime(&seconds);
+        
+        // Формат: ГГГГ-ММ-ДД ЧЧ:ММ:СС.мсс
+        snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d.%03u",
+                 tm_info->tm_year + 1900, 
+                 tm_info->tm_mon + 1,       
+                 tm_info->tm_mday,       
+                 tm_info->tm_hour,        
+                 tm_info->tm_min,         
+                 tm_info->tm_sec,           
+                 milliseconds);         
+    } else {
+        snprintf(buf, sizeof(buf), "----:--:-- --:--:--.---");
+    }
+
+    sf::Text text;
+    text.setFont(ts_font);
+    text.setString(buf);
+    text.setCharacterSize(12); 
+    text.setFillColor(sf::Color(255, 255, 255, 220));
+    text.setOutlineColor(sf::Color(0, 0, 0, 180));
+    text.setOutlineThickness(1.0f);
+    text.setPosition(6.0f, 4.0f);
+    window->draw(text);
+}
+
 // main loop of graphics thread
 void AP_OSD_SITL::update_thread(void)
 {
     load_font();
+    
+    const char* font_paths[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
+        nullptr
+    };
+    for (int i = 0; font_paths[i]; i++) {
+        if (_ts_font.loadFromFile(font_paths[i])) {
+            _ts_font_loaded = true;
+            break;
+        }
+    }
+    
     {
         WITH_SEMAPHORE(AP::notify().sf_window_mutex);
         w = NEW_NOTHROW sf::RenderWindow(sf::VideoMode(video_cols*(char_width+char_spacing)*char_scale,
@@ -169,6 +266,12 @@ void AP_OSD_SITL::update_thread(void)
                 }
 
                 w->display();
+                draw_crosshair(w);
+                if (_ts_font_loaded) {
+                    draw_timestamp(w, _ts_font);
+                }
+                w->display();  // second display after overlay
+                
                 if (last_font != get_font_num()) {
                     load_font();
                 }
@@ -187,7 +290,7 @@ void *AP_OSD_SITL::update_thread_start(void *obj)
 
 // initialise backend
 bool AP_OSD_SITL::init(void)
-{
+{    
     pthread_create(&thread, NULL, update_thread_start, this);
     return true;
 }

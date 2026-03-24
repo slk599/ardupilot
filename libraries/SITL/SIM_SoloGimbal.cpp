@@ -259,6 +259,9 @@ void SoloGimbal::send_report(void)
         gimbal_report.joint_roll = joint_angles.x;
         gimbal_report.joint_el = joint_angles.y;
         gimbal_report.joint_az = joint_angles.z;
+        gimbal_report.osd_timestamp = 0;
+        gimbal_report.osd_x = 0;
+        gimbal_report.osd_y = 0;
 
         len = mavlink_msg_gimbal_report_encode_status(vehicle_system_id,
                                                       gimbal_component_id,
